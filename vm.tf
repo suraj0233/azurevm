@@ -21,10 +21,40 @@ resource "azurerm_subnet" "subnet" {
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-output "vnet_id" {
-  value = azurerm_virtual_network.vnet.id
+resource "azurerm_network_interface" "nic" {
+  name                = "spacelift-nic"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.subnet.id
+    private_ip_address_allocation = "Dynamic"
+  }
 }
 
-output "subnet_id" {
-  value = azurerm_subnet.subnet.id
+resource "azurerm_linux_virtual_machine" "vm" {
+  name                = "spacelift-vm"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  size                = "Standard_DS1_v2"
+  admin_username      = "adminuser"
+  admin_password      = "Password123!"
+  network_interface_ids = [azurerm_network_interface.nic.id]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "20.04-LTS"
+    version   = "latest"
+  }
+}
+
+output "vm_public_ip" {
+  value = azurerm_linux_virtual_machine.vm.public_ip_address
 }
